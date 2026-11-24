@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mini Craft</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#9bc4ff;font-family:"Courier New",monospace}
+canvas{display:block;width:100%;height:100%}
+#cross{position:fixed;left:50%;top:50%;width:20px;height:20px;margin:-10px;pointer-events:none}
+#cross:before,#cross:after{content:"";position:absolute;background:#fff;mix-blend-mode:difference}
+#cross:before{left:9px;top:0;width:2px;height:20px}
+#cross:after{top:9px;left:0;height:2px;width:20px}
+#bar{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:4px;background:#0006;padding:4px;border:2px solid #000}
+.s{width:48px;height:48px;border:3px solid #555;background-size:cover;image-rendering:pixelated;position:relative;cursor:pointer}
+.s.on{border-color:#fff}
+.s i{position:absolute;left:2px;top:0;color:#fff;font:bold 12px monospace;text-shadow:1px 1px #000;font-style:normal}
+#hud{position:fixed;left:8px;top:6px;color:#fff;font:13px monospace;text-shadow:1px 1px #000;white-space:pre;pointer-events:none}
+#ov{position:fixed;inset:0;background:#000b;color:#fff;display:flex;flex-direction:column;align-items:center;padding:20px;text-align:center;overflow:auto;box-sizing:border-box;padding-top:max(20px,env(safe-area-inset-top))}
+#ov h1{font-size:42px;margin:0 0 8px;text-shadow:4px 4px #333;letter-spacing:2px}
+#panel{background:#222;border:2px solid #777;padding:10px 14px;margin-top:10px;text-align:left;max-width:560px;width:100%;box-sizing:border-box}
+.row{display:flex;align-items:center;gap:6px;margin:5px 0;flex-wrap:wrap}
+.row b{width:110px;font-size:14px}
+.row button{font:13px monospace;background:#444;color:#fff;border:2px solid #888;padding:3px 8px;cursor:pointer}
+.row button.add{background:#264}
+.row button.cap{background:#a52}
+#rst{font:12px monospace;background:#633;color:#fff;border:2px solid #888;padding:3px 8px;cursor:pointer;margin-top:6px}
+.scr{display:none;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:440px;margin:auto}
+.scr h2{margin:0 0 4px;text-shadow:2px 2px #333}
+.scr label{font-size:13px;align-self:flex-start}
+.scr input{width:100%;box-sizing:border-box;font:16px monospace;padding:8px;background:#000;color:#fff;border:2px solid #999}
+.mb{width:100%;padding:10px;font:bold 16px monospace;background:#8b8b8b;color:#fff;border:3px solid #000;box-shadow:inset 2px 2px #bbb,inset -2px -2px #555;text-shadow:2px 2px #3f3f3f;cursor:pointer}
+.mb:hover:not(:disabled){background:#7a8bcf}
+.mb:disabled{color:#999;cursor:default}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+.splash{color:#ff0;font-weight:bold;transform:rotate(-6deg);margin:-4px 0 14px;text-shadow:2px 2px #440}
+.tip{font-size:13px;line-height:1.6;opacity:.85}
+#wl{width:100%;max-height:40vh;overflow:auto;background:#0006;border:2px solid #555;padding:4px;box-sizing:border-box}
+.wi{background:#000a;border:2px solid #555;padding:8px 12px;text-align:left;cursor:pointer;margin:4px 0}
+.wi.on{border-color:#fff}
+.wi small{opacity:.7}
+#load{position:fixed;inset:0;display:none;align-items:center;justify-content:center;color:#fff;font:bold 22px monospace;background:#000a;text-shadow:2px 2px #000;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="cross"></div>
+<div id="bar"></div>
+<div id="hud"></div>
+<div id="load">Dünya oluşturuluyor…</div>
+
+<div id="ov">
+  <div class="scr" id="s-main">
+    <h1>MINI CRAFT</h1>
+    <div class="splash">Sonsuz dünya!</div>
+    <button class="mb" id="b-single">Tek Oyunculu</button>
+    <button class="mb" id="b-keys1">Tuş Ayarları</button>
+  </div>
+
+  <div class="scr" id="s-worlds">
+    <h2>Dünya Seç</h2>
+    <div id="wl"></div>
+    <div class="grid">
+      <button class="mb" id="b-play">Seçili Dünyayı Oyna</button>
+      <button class="mb" id="b-new">Yeni Dünya Oluştur</button>
+      <button class="mb" id="b-edit">Düzenle</button>
+      <button class="mb" id="b-del">Sil</button>
+    </div>
+    <button class="mb" id="b-back1">Geri</button>
+    <div class="tip">Dünyalar bu tarayıcıda otomatik kaydedilir.</div>
+  </div>
+
+  <div class="scr" id="s-create">
+    <h2 id="ct">Yeni Dünya</h2>
+    <label>Dünya adı</label>
+    <input id="i-name" maxlength="24">
+    <div id="test-dim-box" style="display:none;width:100%">
+      <label>Alan Boyutu (Genişlik x Derinlik)</label>
+      <div class="grid">
+        <input id="i-tw" type="number" min="3" max="64" value="16" placeholder="X (ör: 16)">
+        <input id="i-td" type="number" min="3" max="64" value="16" placeholder="Z (ör: 16)">
+      </div>
+    </div>
+    <label id="l-seed">Tohum (boş bırak: rastgele)</label>
+    <input id="i-seed" maxlength="24">
+    <button class="mb" id="b-create">Dünya Oluştur</button>
+    <button class="mb" id="b-cancel">İptal</button>
+  </div>
+
+  <div class="scr" id="s-pause">
+    <h2>Oyun Menüsü</h2>
+    <button class="mb" id="b-resume">Oyuna Dön</button>
+    <button class="mb" id="b-export" style="display:none;background:#6a4c93">Yapıyı İndir</button>
+    <button class="mb" id="b-keys2">Tuş Ayarları</button>
+    <button class="mb" id="b-exit">Kaydet ve Ana Menüye Çık</button>
+    <div class="tip">Sol tık basılı: kır · 1-8 / tekerlek: blok seç</div>
+  </div>
+
+  <div class="scr" id="s-keys">
+    <div id="panel">
+      <div style="margin-bottom:4px"><b>TUŞ AYARLARI</b> (tuşa tıkla: sil, + ile ekle; fare tuşları da olur)</div>
+      <div id="rows"></div>
+      <button id="rst">Varsayılanlara dön</button>
+    </div>
+    <button class="mb" id="b-keysdone">Bitti</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const S = 16, CH = 56, R = 4;
+
+// Özel yapılar dizisi (Eklenen Kale)
+const CUSTOM_STRUCTURES = [
+  {"w":8,"d":8,"blocks":[[1,0,0,1],[2,0,0,1],[3,0,0,1],[4,0,0,1],[5,0,0,1],[6,0,0,1],[7,0,0,1],[0,0,1,1],[1,0,1,1],[2,0,1,2],[3,0,1,2],[4,0,1,2],[5,0,1,2],[6,0,1,4],[7,0,1,1],[0,0,2,1],[1,0,2,4],[2,0,2,3],[3,0,2,3],[4,0,2,3],[5,0,2,3],[6,0,2,2],[7,0,2,1],[0,0,3,1],[1,0,3,2],[2,0,3,3],[3,0,3,3],[4,0,3,3],[5,0,3,3],[6,0,3,2],[7,0,3,1],[0,0,4,1],[1,0,4,2],[2,0,4,3],[3,0,4,3],[4,0,4,3],[5,0,4,3],[6,0,4,2],[7,0,4,1],[0,0,5,1],[1,0,5,2],[2,0,5,3],[3,0,5,3],[4,0,5,3],[5,0,5,3],[6,0,5,4],[7,0,5,1],[0,0,6,1],[1,0,6,4],[2,0,6,2],[3,0,6,3],[4,0,6,3],[5,0,6,2],[6,0,6,1],[1,0,7,1],[2,0,7,1],[3,0,7,1],[4,0,7,1],[5,0,7,1],[2,1,1,8],[3,1,1,8],[4,1,1,8],[5,1,1,8],[6,1,1,4],[1,1,2,4],[5,1,2,6],[6,1,2,8],[1,1,3,8],[5,1,3,3],[6,1,3,8],[1,1,4,8],[6,1,4,8],[1,1,5,8],[6,1,5,4],[1,1,6,4],[2,1,6,8],[5,1,6,8],[2,2,1,8],[3,2,1,8],[4,2,1,8],[5,2,1,8],[6,2,1,4],[1,2,2,4],[5,2,2,3],[6,2,2,8],[1,2,3,8],[6,2,3,8],[1,2,4,8],[6,2,4,8],[1,2,5,8],[6,2,5,4],[1,2,6,4],[2,2,6,8],[5,2,6,8],[2,3,1,8],[3,3,1,8],[4,3,1,8],[5,3,1,8],[6,3,1,4],[1,3,2,4],[2,3,2,7],[4,3,2,3],[6,3,2,8],[1,3,3,8],[6,3,3,8],[1,3,4,8],[6,3,4,8],[1,3,5,8],[2,3,5,7],[6,3,5,4],[1,3,6,4],[2,3,6,8],[3,3,6,8],[4,3,6,8],[5,3,6,8],[2,4,1,8],[3,4,1,8],[4,4,1,8],[5,4,1,8],[6,4,1,4],[1,4,2,4],[2,4,2,8],[3,4,2,8],[6,4,2,8],[1,4,3,8],[2,4,3,8],[3,4,3,8],[4,4,3,8],[6,4,3,8],[1,4,4,8],[2,4,4,8],[3,4,4,8],[4,4,4,8],[5,4,4,8],[6,4,4,8],[1,4,5,8],[2,4,5,8],[3,4,5,8],[4,4,5,8],[5,4,5,8],[6,4,5,4],[1,4,6,4],[2,4,6,8],[3,4,6,8],[4,4,6,8],[5,4,6,8],[1,5,1,8],[2,5,1,8],[3,5,1,8],[4,5,1,8],[5,5,1,8],[6,5,1,8],[1,5,2,8],[6,5,2,8],[1,5,3,8],[6,5,3,8],[1,5,4,8],[6,5,4,8],[1,5,5,8],[6,5,5,8],[1,5,6,8],[2,5,6,8],[3,5,6,8],[4,5,6,8],[5,5,6,8],[6,5,6,8],[1,6,1,8],[2,6,1,8],[4,6,1,8],[6,6,1,8],[1,6,2,8],[6,6,3,8],[1,6,4,8],[6,6,5,8],[1,6,6,8],[3,6,6,8],[5,6,6,8],[6,6,6,8]]}
+];
+
+// ---------- dokular ----------
+const px = (c, i, j, r, g, b, a = 1) => {
+  c.fillStyle = `rgba(${r | 0},${g | 0},${b | 0},${a})`;
+  c.fillRect(i, j, 1, 1);
+};
+const mk = f => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 16;
+  f(c.getContext('2d'));
+  return c;
+};
+const noisy = (c, r, g, b, v) => {
+  for (let i = 0; i < 16; i++)
+    for (let j = 0; j < 16; j++) {
+      const n = (Math.random() - .5) * v;
+      px(c, i, j, r + n, g + n, b + n);
+    }
+};
+const drawLeafBase = c => {
+  for (let i = 0; i < 16; i++) {
+    for (let j = 0; j < 16; j++) {
+      const r = Math.random();
+      if (r < .22) {
+        px(c, i, j, 32, 68, 22);
+      } else {
+        const n = (Math.random() - .5) * 28;
+        px(c, i, j, 54 + n, 126 + n, 38 + n);
+      }
+    }
+  }
+};
+
+const cv = {};
+cv.dirt = mk(c => noisy(c, 134, 96, 67, 40));
+cv.grassTop = mk(c => noisy(c, 95, 159, 53, 40));
+cv.grassSide = mk(c => {
+  noisy(c, 134, 96, 67, 40);
+  for (let i = 0; i < 16; i++) {
+    const h = 3 + (Math.random() * 2 | 0);
+    for (let j = 0; j < h; j++) {
+      const n = (Math.random() - .5) * 40;
+      px(c, i, j, 95 + n, 159 + n, 53 + n);
+    }
+  }
+});
+cv.plank = mk(c => {
+  noisy(c, 157, 127, 78, 22);
+  for (let i = 0; i < 16; i++)
+    for (let j = 0; j < 16; j++) {
+      if (j % 4 == 3) px(c, i, j, 100, 76, 40);
+      else if (i == ((j >> 2) % 2) * 8) px(c, i, j, 120, 92, 50);
+    }
+});
+cv.logSide = mk(c => {
+  noisy(c, 104, 82, 50, 20);
+  for (let i = 0; i < 16; i += 4)
+    for (let j = 0; j < 16; j++) px(c, i, j, 70, 52, 30);
+});
+cv.logTop = mk(c => {
+  for (let i = 0; i < 16; i++)
+    for (let j = 0; j < 16; j++) {
+      const d = Math.hypot(i - 7.5, j - 7.5),
+            e = Math.max(Math.abs(i - 7.5), Math.abs(j - 7.5)),
+            n = (Math.random() - .5) * 14;
+      if (e > 6.5) px(c, i, j, 100 + n, 78 + n, 46 + n);
+      else {
+        const k = Math.floor(d) % 2 ? -25 : 0;
+        px(c, i, j, 170 + k + n, 138 + k + n, 86 + k + n);
+      }
+    }
+});
+cv.glass = mk(c => {
+  for (let i = 0; i < 16; i++)
+    for (let j = 0; j < 16; j++) {
+      if (i == 0 || j == 0 || i == 15 || j == 15) px(c, i, j, 215, 240, 248, .85);
+      else if (Math.random() < .03) px(c, i, j, 255, 255, 255, .6);
+    }
+  for (let k = 2; k < 6; k++) px(c, k, k, 255, 255, 255, .7);
+});
+
+// Taş (ID 8)
+cv.stone = mk(c => {
+  noisy(c, 125, 125, 125, 32);
+  for (let i = 0; i < 16; i++)
+    for (let j = 0; j < 16; j++) {
+      if ((i + j * 3) % 7 == 0 && Math.random() < .5) px(c, i, j, 95, 95, 95);
+      else if ((i * 2 + j) % 9 == 0 && Math.random() < .4) px(c, i, j, 150, 150, 150);
+    }
+});
+
+// Mor Zemin Bloğu (ID 9)
+cv.purpleBase = mk(c => {
+  noisy(c, 138, 43, 226, 24);
+  for (let i = 0; i < 16; i++)
+    for (let j = 0; j < 16; j++) {
+      if (i == 0 || j == 0 || i == 15 || j == 15) px(c, i, j, 180, 100, 255);
+    }
+});
+
+// Ağaç Yaprağı (ID 6) ve Elmalı Ağaç Yaprağı (ID 7)
+cv.leaves = mk(c => drawLeafBase(c));
+cv.appleLeaves = mk(c => {
+  drawLeafBase(c);
+  const apples = [[3, 4], [11, 3], [6, 11], [12, 11]];
+  for (const [ax, ay] of apples) {
+    px(c, ax, ay, 200, 25, 25);
+    px(c, ax + 1, ay, 225, 40, 40);
+    px(c, ax, ay + 1, 180, 20, 20);
+    px(c, ax + 1, ay + 1, 210, 30, 30);
+    px(c, ax, ay, 255, 140, 140);
+    px(c, ax + 1, ay - 1, 85, 55, 25);
+  }
+});
+
+const cracks = [];
+for (let s = 0; s < 10; s++)
+  cracks.push(mk(c => {
+    for (let k = 0; k < s * 14 + 4; k++)
+      px(c, Math.random() * 16 | 0, Math.random() * 16 | 0, 0, 0, 0, .65);
+  }));
+
+const tex = c => {
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = t.minFilter = THREE.NearestFilter;
+  return t;
+};
+const names = ['grassTop', 'grassSide', 'dirt', 'plank', 'logSide', 'logTop', 'glass', 'leaves', 'appleLeaves', 'stone', 'purpleBase'];
+const mats = names.map(n => new THREE.MeshBasicMaterial({
+  map: tex(cv[n]),
+  vertexColors: true,
+  transparent: n == 'glass',
+  alphaTest: n == 'glass' ? .05 : 0
+}));
+const matFor = (t, d) => t == 1 ? (d == 2 ? 0 : d == 3 ? 2 : 1) : t == 2 ? 2 : t == 3 ? 3 : t == 4 ? (d >= 2 && d <= 3 ? 5 : 4) : t == 5 ? 6 : t == 6 ? 7 : t == 7 ? 8 : t == 8 ? 9 : 10;
+const DIR = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+const FACE = [
+  [[1, 0, 1], [1, 0, 0], [1, 1, 0], [1, 1, 1]],
+  [[0, 0, 0], [0, 0, 1], [0, 1, 1], [0, 1, 0]],
+  [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]],
+  [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]],
+  [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]],
+  [[1, 0, 0], [0, 0, 0], [0, 1, 0], [1, 1, 0]]
+];
+const SH = [.8, .8, 1, .55, .65, .65], UV = [[0, 0], [1, 0], [1, 1], [0, 1]];
+
+// ---------- prosedürel arazi ----------
+let SEED = 1, edits = {}, dirty = false;
+function hash(x, z, s) {
+  let h = Math.imul(x | 0, 374761393) ^ Math.imul(z | 0, 668265263) ^ Math.imul(s + SEED, 1274126177);
+  h = Math.imul(h ^ (h >>> 13), 1597334677);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+}
+function vnoise(x, z, s) {
+  const ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz,
+        u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz);
+  const a = hash(ix, iz, s), b = hash(ix + 1, iz, s), c = hash(ix, iz + 1, s), d = hash(ix + 1, iz + 1, s);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function fbm(x, z, o) {
+  let a = 1, f = 1, t = 0, n = 0;
+  for (let i = 0; i < o; i++) {
+    t += vnoise(x * f, z * f, i * 17) * a;
+    n += a;
+    a *= .5;
+    f *= 2;
+  }
+  return t / n;
+}
+const terrainH = (x, z) => {
+  const m = fbm(x / 120, z / 120, 3);
+  return Math.floor(8 + 34 * m * m * 1.5 + 6 * fbm(x / 24, z / 24, 3));
+};
+
+// ---------- chunk üretimi ----------
+const chunks = new Map(), key = (a, b) => a + ',' + b;
+function gen(cx, cz) {
+  let c = chunks.get(key(cx, cz));
+  if (c) return c;
+  c = { cx, cz, d: new Uint8Array(S * S * CH), maxY: 0, g: null, box: null, edited: false };
+  chunks.set(key(cx, cz), c);
+
+  const L = (x, y, z, t) => {
+    if (x < 0 || x >= S || z < 0 || z >= S || y < 0 || y >= CH) return;
+    c.d[x + S * (z + S * y)] = t;
+    if (t && y > c.maxY) c.maxY = y;
+  };
+  const LEmpty = (x, y, z, t) => {
+    if (x < 0 || x >= S || z < 0 || z >= S || y < 0 || y >= CH) return;
+    if (!c.d[x + S * (z + S * y)]) {
+      c.d[x + S * (z + S * y)] = t;
+      if (t && y > c.maxY) c.maxY = y;
+    }
+  };
+
+  if (curW && curW.isTest) {
+    const tw = curW.tw || 16, td = curW.td || 16;
+    for (let z = 0; z < S; z++) {
+      for (let x = 0; x < S; x++) {
+        const wx = cx * S + x, wz = cz * S + z;
+        if (wx >= 0 && wx < tw && wz >= 0 && wz < td) {
+          L(x, 10, z, 9);
+        }
+      }
+    }
+    const ed = edits[key(cx, cz)];
+    if (ed) {
+      c.edited = true;
+      for (const i in ed) {
+        c.d[i] = ed[i];
+        const y = Math.floor(i / (S * S));
+        if (ed[i] && y > c.maxY) c.maxY = y;
+      }
+    }
+    return c;
+  }
+
+  const hs = [];
+  for (let z = 0; z < S; z++)
+    for (let x = 0; x < S; x++) {
+      const h = terrainH(cx * S + x, cz * S + z);
+      hs[x + S * z] = h;
+      for (let y = 0; y <= h; y++) L(x, y, z, y == h ? 1 : (y < h - 3 ? 8 : 2));
+    }
+
+  if ((cx || cz) && CUSTOM_STRUCTURES.length > 0 && hash(cx, cz, 19) < .08) {
+    const st = CUSTOM_STRUCTURES[(hash(cx, cz, 23) * CUSTOM_STRUCTURES.length) | 0];
+    const rot = (hash(cx, cz, 29) * 4) | 0; // 0: 0°, 1: 90°, 2: 180°, 3: 270°
+    const rw = (rot % 2 === 1) ? st.d : st.w;
+    const rd = (rot % 2 === 1) ? st.w : st.d;
+    if (st && rw <= S && rd <= S) {
+      const ox = Math.floor((S - rw) / 2), oz = Math.floor((S - rd) / 2);
+      let b = 0;
+      for (let z = oz; z < oz + rd; z++)
+        for (let x = ox; x < ox + rw; x++) b = Math.max(b, hs[x + S * z]);
+      for (let z = oz; z < oz + rd; z++)
+        for (let x = ox; x < ox + rw; x++)
+          for (let y = hs[x + S * z]; y <= b; y++) L(x, y, z, y == b ? 1 : 2);
+      for (const [bx, by, bz, bt] of st.blocks) {
+        let rx = bx, rz = bz;
+        if (rot === 1) { rx = st.d - 1 - bz; rz = bx; }
+        else if (rot === 2) { rx = st.w - 1 - bx; rz = st.d - 1 - bz; }
+        else if (rot === 3) { rx = bz; rz = st.w - 1 - bx; }
+        L(ox + rx, b + 1 + by, oz + rz, bt);
+      }
+    }
+  } else if ((cx || cz) && hash(cx, cz, 7) < .1) {
+    let b = 0;
+    for (let z = 4; z <= 10; z++)
+      for (let x = 4; x <= 10; x++) b = Math.max(b, hs[x + S * z]);
+    for (let z = 4; z <= 10; z++)
+      for (let x = 4; x <= 10; x++) {
+        for (let y = hs[x + S * z]; y <= b; y++) L(x, y, z, y == b ? 1 : 2);
+        const e = x == 4 || x == 10 || z == 4 || z == 10,
+              cor = (x == 4 || x == 10) && (z == 4 || z == 10);
+        for (let y = b + 1; y <= b + 4; y++) {
+          let t = 0;
+          if (y == b + 4) t = 3;
+          else if (e) {
+            t = cor ? 4 : 3;
+            if (y == b + 2 && (x == 7 || z == 7)) t = 5;
+            if (z == 4 && x == 7 && y <= b + 2) t = 0;
+          }
+          L(x, y, z, t);
+        }
+      }
+  } else {
+    // Doğal ağaçlar (Odun gövde + Ağaç Yaprağı + Elmalı Ağaç Yaprağı)
+    for (let z = 2; z < 14; z++) {
+      for (let x = 2; x < 14; x++) {
+        if (hash(cx * S + x, cz * S + z, 3) < .014) {
+          const h = hs[x + S * z],
+                n = 4 + (hash(cx * S + x, cz * S + z, 9) * 2 | 0),
+                topY = h + n;
+          // Yaprak tacı
+          for (let dy = -2; dy <= 1; dy++) {
+            const rad = dy == 1 ? 1 : 2;
+            for (let dz = -rad; dz <= rad; dz++) {
+              for (let dx = -rad; dx <= rad; dx++) {
+                if (Math.abs(dx) == rad && Math.abs(dz) == rad && (dy == 1 || hash(cx * S + x + dx, cz * S + z + dz, dy + 11) < .55)) continue;
+                const isApple = hash(cx * S + x + dx * 3, cz * S + z + dz * 5, topY + dy + 31) < .16;
+                LEmpty(x + dx, topY + dy, z + dz, isApple ? 7 : 6);
+              }
+            }
+          }
+          // Gövde
+          for (let i = 1; i <= n; i++) L(x, h + i, z, 4);
+        }
+      }
+    }
+  }
+
+  const ed = edits[key(cx, cz)];
+  if (ed) {
+    c.edited = true;
+    for (const i in ed) {
+      c.d[i] = ed[i];
+      const y = Math.floor(i / (S * S));
+      if (ed[i] && y > c.maxY) c.maxY = y;
+    }
+  }
+  return c;
+}
+
+function getW(x, y, z) {
+  if (y < 0) return 1;
+  if (y >= CH) return 0;
+  const c = chunks.get(key(x >> 4, z >> 4));
+  return c ? c.d[(x & 15) + S * ((z & 15) + S * y)] : 0;
+}
+function solidAt(x, y, z) {
+  x = Math.floor(x); y = Math.floor(y); z = Math.floor(z);
+  if (y < 0) return true;
+  if (y >= CH) return false;
+  const c = chunks.get(key(x >> 4, z >> 4));
+  return c ? c.d[(x & 15) + S * ((z & 15) + S * y)] != 0 : true;
+}
+function lget(c, x, y, z) {
+  if (y < 0) return 1;
+  if (y >= CH) return 0;
+  if (x >= 0 && x < S && z >= 0 && z < S) return c.d[x + S * (z + S * y)];
+  return getW(c.cx * S + x, y, c.cz * S + z);
+}
+function drop(c) {
+  if (c.g) {
+    scene.remove(c.g);
+    c.g.traverse(o => o.geometry && o.geometry.dispose());
+    c.g = null;
+  }
+}
+function mesh(c) {
+  drop(c);
+  const B = mats.map(() => ({ p: [], u: [], c: [], i: [] }));
+  for (let y = 0; y <= c.maxY; y++)
+    for (let z = 0; z < S; z++)
+      for (let x = 0; x < S; x++) {
+        const t = c.d[x + S * (z + S * y)];
+        if (!t) continue;
+        for (let d = 0; d < 6; d++) {
+          const n = lget(c, x + DIR[d][0], y + DIR[d][1], z + DIR[d][2]);
+          if (n && !(n == 5 && t != 5)) continue;
+          const b = B[matFor(t, d)], o = b.p.length / 3;
+          for (let k = 0; k < 4; k++) {
+            const f = FACE[d][k];
+            b.p.push(x + f[0], y + f[1], z + f[2]);
+            b.u.push(...UV[k]);
+            b.c.push(SH[d], SH[d], SH[d]);
+          }
+          b.i.push(o, o + 1, o + 2, o, o + 2, o + 3);
+        }
+      }
+  const g = new THREE.Group();
+  B.forEach((b, i) => {
+    if (!b.i.length) return;
+    const ge = new THREE.BufferGeometry();
+    ge.setAttribute('position', new THREE.Float32BufferAttribute(b.p, 3));
+    ge.setAttribute('uv', new THREE.Float32BufferAttribute(b.u, 2));
+    ge.setAttribute('color', new THREE.Float32BufferAttribute(b.c, 3));
+    ge.setIndex(b.i);
+    const m = new THREE.Mesh(ge, mats[i]);
+    m.frustumCulled = false;
+    g.add(m);
+  });
+  g.position.set(c.cx * S, 0, c.cz * S);
+  c.box = new THREE.Box3(new THREE.Vector3(c.cx * S, 0, c.cz * S), new THREE.Vector3(c.cx * S + S, c.maxY + 2, c.cz * S + S));
+  scene.add(g);
+  c.g = g;
+}
+function setW(x, y, z, t) {
+  const c = chunks.get(key(x >> 4, z >> 4));
+  if (!c || y < 0 || y >= CH) return;
+  const lx = x & 15, lz = z & 15;
+  c.d[lx + S * (lz + S * y)] = t;
+  c.edited = true;
+  (edits[key(c.cx, c.cz)] = edits[key(c.cx, c.cz)] || {})[lx + S * (lz + S * y)] = t;
+  dirty = true;
+  if (t && y > c.maxY) c.maxY = y;
+  mesh(c);
+  const rm = (a, b) => {
+    const n = chunks.get(key(a, b));
+    if (n && n.g) mesh(n);
+  };
+  if (lx == 0) rm(c.cx - 1, c.cz);
+  if (lx == 15) rm(c.cx + 1, c.cz);
+  if (lz == 0) rm(c.cx, c.cz - 1);
+  if (lz == 15) rm(c.cx, c.cz + 1);
+}
+
+// ---------- sahne ----------
+const renderer = new THREE.WebGLRenderer({ antialias: false });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9bc4ff);
+scene.fog = new THREE.Fog(0x9bc4ff, R * S * .5, R * S * .92);
+
+const cam = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, .05, 110);
+cam.rotation.order = 'YXZ';
+
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  cam.aspect = innerWidth / innerHeight;
+  cam.updateProjectionMatrix();
+});
+
+const sel = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.004, 1.004, 1.004)), new THREE.LineBasicMaterial({ color: 0 }));
+sel.visible = false;
+scene.add(sel);
+
+const crackMats = cracks.map(c => new THREE.MeshBasicMaterial({ map: tex(c), transparent: true, depthWrite: false }));
+const crackMesh = new THREE.Mesh(new THREE.BoxGeometry(1.006, 1.006, 1.006), crackMats[0]);
+crackMesh.visible = false;
+scene.add(crackMesh);
+
+// ---------- hotbar (8 slot) ----------
+const slots = [1, 2, 8, 3, 4, 5, 6, 7],
+      icon = ['grassSide', 'dirt', 'stone', 'plank', 'logSide', 'glass', 'leaves', 'appleLeaves'];
+let cur = 0;
+const bar = document.getElementById('bar');
+slots.forEach((t, i) => {
+  const e = document.createElement('div');
+  e.className = 's';
+  e.style.backgroundImage = `url(${cv[icon[i]].toDataURL()})`;
+  e.innerHTML = `<i>${i + 1}</i>`;
+  e.onclick = () => { cur = i; upd(); };
+  bar.appendChild(e);
+});
+const upd = () => [...bar.children].forEach((e, i) => e.classList.toggle('on', i == cur));
+upd();
+
+const col = { 1: 0x5f9f35, 2: 0x866043, 3: 0x9d7f4e, 4: 0x68523a, 5: 0xd7f0f8, 6: 0x367e26, 7: 0xc82828, 8: 0x7d7d7d, 9: 0x8a2be2 },
+      hard = { 1: .6, 2: .5, 3: .8, 4: 1, 5: .3, 6: .25, 7: .25, 8: 1.4, 9: 999999 };
+
+// ---------- tuş ayarları ----------
+const DEF = { forward: ['KeyW'], back: ['KeyS'], left: ['KeyA'], right: ['KeyD'], jump: ['Space'], brk: ['Mouse0'], place: ['Mouse2'] };
+const LBL = { forward: 'İleri', back: 'Geri', left: 'Sol', right: 'Sağ', jump: 'Zıpla', brk: 'Bloğu kır', place: 'Blok koy' };
+let B = JSON.parse(JSON.stringify(DEF));
+try { Object.assign(B, JSON.parse(localStorage.getItem('mc_keys') || '{}')); } catch (e) {}
+const save = () => { try { localStorage.setItem('mc_keys', JSON.stringify(B)); } catch (e) {} };
+const nm = c => ({ Space: 'Boşluk', Mouse0: 'Sol Tık', Mouse1: 'Orta Tık', Mouse2: 'Sağ Tık', ShiftLeft: 'Sol Shift', ShiftRight: 'Sağ Shift', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' })[c] || c.replace(/^(Key|Digit)/, '').replace(/^Mouse(\d)/, 'Fare $1');
+let cap = null, ignoreUntil = 0;
+
+function ui() {
+  const r = document.getElementById('rows');
+  r.innerHTML = '';
+  for (const a in LBL) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<b>${LBL[a]}</b>`;
+    B[a].forEach(c => {
+      const b = document.createElement('button');
+      b.textContent = nm(c) + ' ×';
+      b.onclick = () => { B[a] = B[a].filter(k => k != c); save(); ui(); };
+      row.appendChild(b);
+    });
+    const ad = document.createElement('button');
+    ad.className = cap == a ? 'cap' : 'add';
+    ad.textContent = cap == a ? 'Tuşa bas… (Esc: iptal)' : '+ Ekle';
+    ad.onclick = () => { cap = a; ui(); };
+    row.appendChild(ad);
+    r.appendChild(row);
+  }
+}
+ui();
+
+document.getElementById('rst').onclick = () => { B = JSON.parse(JSON.stringify(DEF)); cap = null; save(); ui(); };
+const down = new Set(), act = a => B[a].some(c => down.has(c));
+function addBind(c) {
+  if (c != 'Escape' && !B[cap].includes(c)) { B[cap].push(c); save(); }
+  cap = null;
+  ignoreUntil = performance.now() + 400;
+  ui();
+}
+
+// ---------- oyuncu / kontroller ----------
+const P = { x: 8.5, y: 80, z: 8.5, vy: 0, yaw: 0, pitch: 0, ground: false };
+let locked = false, ready = false, target = null, inGame = false, spawn = null, curW = null, manualUnlock = false;
+const ov = document.getElementById('ov'), cvs = renderer.domElement;
+
+function enterPlayView() {
+  ov.style.display = 'none';
+  if (ready) loadEl.style.display = 'none';
+}
+
+function requestSafePointerLock() {
+  if (!cvs || typeof cvs.requestPointerLock !== 'function') return;
+  try {
+    const res = cvs.requestPointerLock();
+    if (res && typeof res.catch === 'function') {
+      res.catch(() => {
+        // İframe/önizleme ortamında pointer lock reddedilirse oyunu yine oynanabilir tut
+        locked = false;
+        enterPlayView();
+      });
+    }
+  } catch (e) {
+    locked = false;
+    enterPlayView();
+  }
+}
+
+const lock = () => {
+  if (!inGame) return;
+  manualUnlock = false;
+  enterPlayView();
+  requestSafePointerLock();
+};
+
+document.addEventListener('pointerlockchange', () => {
+  locked = document.pointerLockElement === cvs;
+  if (locked) {
+    manualUnlock = false;
+    enterPlayView();
+  } else if (inGame && manualUnlock) {
+    saveWorld();
+    show('pause');
+  }
+});
+
+document.addEventListener('pointerlockerror', () => {
+  locked = false;
+  if (inGame && !manualUnlock) {
+    enterPlayView();
+  }
+});
+
+addEventListener('keydown', e => {
+  if (cap) { e.preventDefault(); addBind(e.code); return; }
+  if (e.code === 'Escape' && inGame && ov.style.display === 'none') {
+    e.preventDefault();
+    manualUnlock = true;
+    saveWorld();
+    show('pause');
+    return;
+  }
+  down.add(e.code);
+  if (e.code >= 'Digit1' && e.code <= 'Digit' + slots.length) { cur = +e.code[5] - 1; upd(); }
+  if (inGame && ov.style.display === 'none') {
+    if (e.code == 'Space') e.preventDefault();
+    if (B.place.includes(e.code) && !e.repeat) placeBlock();
+  }
+});
+
+addEventListener('mousemove', e => {
+  if (!inGame || ov.style.display !== 'none') return;
+  if (document.pointerLockElement === cvs || e.buttons > 0) {
+    P.yaw -= e.movementX * .0025;
+    P.pitch = Math.max(-1.55, Math.min(1.55, P.pitch - e.movementY * .0025));
+  }
+});
+addEventListener('keyup', e => down.delete(e.code));
+addEventListener('mousedown', e => {
+  const c = 'Mouse' + e.button;
+  if (cap) { e.preventDefault(); addBind(c); return; }
+  if (!inGame || ov.style.display !== 'none') return;
+  if (document.pointerLockElement !== cvs && e.button === 0) {
+    requestSafePointerLock();
+  }
+  e.preventDefault();
+  down.add(c);
+  if (B.place.includes(c)) placeBlock();
+});
+addEventListener('mouseup', e => down.delete('Mouse' + e.button));
+addEventListener('wheel', e => { cur = (cur + (e.deltaY > 0 ? 1 : slots.length - 1)) % slots.length; upd(); });
+addEventListener('contextmenu', e => e.preventDefault());
+
+function placeBlock() {
+  if (!target) return;
+  const [x, y, z] = target.prev;
+  if (getW(x, y, z)) return;
+  if (x + 1 > P.x - .3 && x < P.x + .3 && z + 1 > P.z - .3 && z < P.z + .3 && y + 1 > P.y && y < P.y + 1.8) return;
+  const blk = slots[cur];
+  if (blk === 9 && (!curW || !curW.isTest)) return;
+  setW(x, y, z, blk);
+}
+
+const hits = (px, py, pz) => {
+  const r = .3;
+  for (const dx of [-r, r])
+    for (const dz of [-r, r])
+      for (const dy of [0, .9, 1.79])
+        if (solidAt(px + dx, py + dy, pz + dz)) return true;
+  return false;
+};
+
+function cast() {
+  const dir = new THREE.Vector3(0, 0, -1).applyEuler(cam.rotation);
+  let pv = null;
+  for (let t = 0; t < 5; t += .02) {
+    const x = Math.floor(cam.position.x + dir.x * t),
+          y = Math.floor(cam.position.y + dir.y * t),
+          z = Math.floor(cam.position.z + dir.z * t);
+    if (getW(x, y, z)) return { pos: [x, y, z], prev: pv || [x, y, z] };
+    pv = [x, y, z];
+  }
+  return null;
+}
+
+// ---------- parçacıklar ----------
+const parts = [], pg = new THREE.BoxGeometry(.12, .12, .12);
+function burst(x, y, z, t) {
+  for (let i = 0; i < 14; i++) {
+    const m = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ color: col[t] }));
+    m.position.set(x + .2 + Math.random() * .6, y + .2 + Math.random() * .6, z + .2 + Math.random() * .6);
+    m.userData = { v: new THREE.Vector3((Math.random() - .5) * 3, Math.random() * 3 + 1, (Math.random() - .5) * 3), l: .9 };
+    scene.add(m);
+    parts.push(m);
+  }
+}
+
+// ---------- chunk yönetimi ----------
+let queue = [], lpx = 1e9, lpz = 1e9;
+function refresh(pcx, pcz) {
+  queue = [];
+  for (let dz = -R; dz <= R; dz++)
+    for (let dx = -R; dx <= R; dx++) {
+      if (dx * dx + dz * dz > R * R + R) continue;
+      const c = chunks.get(key(pcx + dx, pcz + dz));
+      if (!c || !c.g) queue.push([dx * dx + dz * dz, pcx + dx, pcz + dz]);
+    }
+  queue.sort((a, b) => a[0] - b[0]);
+  for (const [k, c] of chunks) {
+    const d = Math.max(Math.abs(c.cx - pcx), Math.abs(c.cz - pcz));
+    if (c.g && (d > R)) drop(c);
+    if (d > R + 2 && !c.edited) chunks.delete(k);
+  }
+}
+function work(ms) {
+  const t0 = performance.now();
+  while (queue.length && performance.now() - t0 < ms) {
+    const [, cx, cz] = queue.shift();
+    for (let a = -1; a <= 1; a++)
+      for (let b = -1; b <= 1; b++) gen(cx + a, cz + b);
+    const c = chunks.get(key(cx, cz));
+    if (!c.g) mesh(c);
+  }
+}
+
+// ---------- oyun döngüsü ----------
+const frustum = new THREE.Frustum(), pm = new THREE.Matrix4(), hud = document.getElementById('hud');
+let last = performance.now(), prog = 0, lastKey = '', fps = 0, fc = 0, ft = 0, vis = 0;
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min((now - last) / 1000, .05);
+  last = now;
+  if (!inGame) return;
+
+  const pcx = Math.floor(P.x / S), pcz = Math.floor(P.z / S);
+  if (pcx != lpx || pcz != lpz) {
+    lpx = pcx;
+    lpz = pcz;
+    refresh(pcx, pcz);
+  }
+  work(ready ? 5 : 40);
+
+  if (!ready) {
+    const sx = Math.floor(spawn.x / S), sz = Math.floor(spawn.z / S);
+    let ok = true;
+    for (let a = -1; a <= 1; a++)
+      for (let b = -1; b <= 1; b++) {
+        const c = chunks.get(key(sx + a, sz + b));
+        if (!c || !c.g) ok = false;
+      }
+    if (ok) {
+      if (spawn.y == null) {
+        let y = CH - 1;
+        const bx = Math.floor(spawn.x), bz = Math.floor(spawn.z);
+        while (y > 0 && !getW(bx, y, bz)) y--;
+        P.y = y + 1.05;
+      } else {
+        P.y = spawn.y;
+      }
+      ready = true;
+      loadEl.style.display = 'none';
+    }
+  }
+
+  if (inGame && ov.style.display === 'none' && ready) {
+    const f = (act('forward') ? 1 : 0) - (act('back') ? 1 : 0),
+          s = (act('right') ? 1 : 0) - (act('left') ? 1 : 0),
+          sp = 4.6,
+          sn = Math.sin(P.yaw),
+          cs = Math.cos(P.yaw);
+    const vx = (-sn * f + cs * s) * sp, vz = (-cs * f - sn * s) * sp;
+    if (act('jump') && P.ground) { P.vy = 8.2; P.ground = false; }
+    P.vy -= 24 * dt;
+    if (!hits(P.x + vx * dt, P.y, P.z)) P.x += vx * dt;
+    if (!hits(P.x, P.y, P.z + vz * dt)) P.z += vz * dt;
+    const ny = P.y + P.vy * dt;
+    if (!hits(P.x, ny, P.z)) {
+      P.y = ny;
+      P.ground = false;
+    } else {
+      if (P.vy < 0) P.ground = true;
+      P.vy = 0;
+    }
+  }
+
+  cam.position.set(P.x, P.y + 1.62, P.z);
+  cam.rotation.set(P.pitch, P.yaw, 0);
+  cam.updateMatrixWorld();
+
+  target = (inGame && ov.style.display === 'none' && ready) ? cast() : null;
+  if (target) {
+    const [x, y, z] = target.pos;
+    sel.position.set(x + .5, y + .5, z + .5);
+    sel.visible = true;
+    const k = x + ',' + y + ',' + z;
+    if (k != lastKey) { prog = 0; lastKey = k; }
+    const bt = getW(x, y, z);
+    if (act('brk') && !(bt === 9 && curW && curW.isTest)) {
+      prog += dt / hard[bt];
+      if (prog >= 1) {
+        setW(x, y, z, 0);
+        burst(x, y, z, bt);
+        prog = 0;
+        lastKey = '';
+        crackMesh.visible = false;
+      } else {
+        crackMesh.visible = true;
+        crackMesh.position.copy(sel.position);
+        crackMesh.material = crackMats[Math.min(9, Math.floor(prog * 10))];
+      }
+    } else {
+      prog = 0;
+      crackMesh.visible = false;
+    }
+  } else {
+    sel.visible = false;
+    crackMesh.visible = false;
+    prog = 0;
+    lastKey = '';
+  }
+
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i], u = p.userData;
+    u.l -= dt;
+    u.v.y -= 14 * dt;
+    p.position.addScaledVector(u.v, dt);
+    p.rotation.x += dt * 6;
+    if (u.l <= 0) {
+      scene.remove(p);
+      p.material.dispose();
+      parts.splice(i, 1);
+    }
+  }
+
+  pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse.copy(cam.matrixWorld).invert());
+  frustum.setFromProjectionMatrix(pm);
+  vis = 0;
+  for (const c of chunks.values()) {
+    if (!c.g) continue;
+    const near = Math.abs(c.cx - pcx) <= 1 && Math.abs(c.cz - pcz) <= 1;
+    c.g.visible = near || frustum.intersectsBox(c.box);
+    if (c.g.visible) vis++;
+  }
+  renderer.render(scene, cam);
+
+  fc++;
+  ft += dt;
+  if (ft > .5) {
+    fps = Math.round(fc / ft);
+    fc = ft = 0;
+    let n = 0;
+    for (const c of chunks.values()) if (c.g) n++;
+    hud.textContent = `FPS ${fps}\nChunk ${pcx}, ${pcz}\nÇizilen chunk ${vis} / yüklü ${n}`;
+  }
+}
+
+// ---------- menüler ve dünya kaydı ----------
+const $ = id => document.getElementById(id), loadEl = $('load'), scrs = document.querySelectorAll('.scr');
+ov.style.background = `linear-gradient(#0008,#0008),url(${cv.dirt.toDataURL()}) 0 0/96px`;
+ov.style.imageRendering = 'pixelated';
+
+function show(n) {
+  if (!n) { ov.style.display = 'none'; return; }
+  ov.style.display = 'flex';
+  scrs.forEach(s => s.style.display = s.id == 's-' + n ? 'flex' : 'none');
+  if (n == 'worlds') drawWorlds();
+  if (n == 'pause') $('b-export').style.display = (curW && curW.isTest) ? 'block' : 'none';
+}
+
+// ---------- mesaj kutusu ----------
+function showToast(txt) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#222;color:#fff;border:2px solid #fff;padding:8px 16px;font:bold 14px monospace;z-index:9999;box-shadow:0 4px 12px #000a';
+    document.body.appendChild(t);
+  }
+  t.textContent = txt;
+  t.style.display = 'block';
+  clearTimeout(t._tm);
+  t._tm = setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+
+let backTo = 'main', selId = null, editId = null, delArm = false;
+const rd = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } };
+const wr = (k, v) => {
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+    return true;
+  } catch (e) {
+    hud.textContent = 'Kayıt başarısız (depolama dolu veya kapalı)';
+    return false;
+  }
+};
+const getList = () => rd('mc_list', []), putList = l => wr('mc_list', l);
+function seedNum(t) {
+  if (/^-?\d+$/.test(t)) return parseInt(t) | 0;
+  let h = 7;
+  for (const ch of t) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0;
+  return h;
+}
+
+function drawWorlds() {
+  const l = getList().sort((a, b) => b.played - a.played);
+  if (!l.find(w => w.id == selId)) selId = l[0] ? l[0].id : null;
+  const box = $('wl');
+  box.innerHTML = '';
+  if (!l.length) box.innerHTML = '<div class="tip" style="padding:10px">Henüz dünya yok. “Yeni Dünya Oluştur” ile başla.</div>';
+  l.forEach(w => {
+    const d = document.createElement('div');
+    d.className = 'wi' + (w.id == selId ? ' on' : '');
+    d.innerHTML = '<b></b><br><small></small>';
+    d.firstChild.textContent = w.name;
+    d.querySelector('small').textContent = 'Son oynanma: ' + new Date(w.played).toLocaleString('tr-TR') + (w.isTest ? ` · Alan: ${w.tw || 16}x${w.td || 16}` : ' · Tohum: ' + w.seedText);
+    d.onclick = () => { selId = w.id; delArm = false; drawWorlds(); };
+    d.ondblclick = () => play(w.id);
+    box.appendChild(d);
+  });
+  ['b-play', 'b-edit', 'b-del'].forEach(i => $(i).disabled = !selId);
+  $('b-del').textContent = delArm ? 'Emin misin? Tekrar tıkla' : 'Sil';
+}
+
+function clearWorld() {
+  for (const c of chunks.values()) drop(c);
+  chunks.clear();
+  queue = [];
+  lpx = lpz = 1e9;
+  parts.forEach(p => scene.remove(p));
+  parts.length = 0;
+}
+
+function play(id) {
+  const w = getList().find(x => x.id == id);
+  if (!w) return;
+  const d = rd('mc_w_' + id, { edits: {}, player: null });
+  clearWorld();
+  SEED = w.seed;
+  edits = d.edits || {};
+  dirty = false;
+  curW = w;
+  ready = false;
+  manualUnlock = false;
+  P.vy = 0;
+  const p = d.player;
+  if (p) {
+    P.x = p.x; P.z = p.z; P.yaw = p.yaw; P.pitch = p.pitch;
+    spawn = { x: p.x, z: p.z, y: p.y };
+  } else {
+    const sx = w.isTest ? Math.floor((w.tw || 16) / 2) + .5 : 8.5;
+    const sz = w.isTest ? Math.floor((w.td || 16) / 2) + .5 : 8.5;
+    P.x = sx; P.z = sz; P.yaw = 0; P.pitch = 0;
+    spawn = { x: sx, z: sz, y: w.isTest ? 11.05 : null };
+  }
+  P.y = spawn.y == null ? 80 : spawn.y;
+  cur = 0;
+  upd();
+  loadEl.style.display = 'flex';
+  inGame = true;
+  lock();
+}
+
+function saveWorld() {
+  if (!inGame || !ready || !curW) return;
+  let saveEdits = edits;
+  if (curW.isTest) {
+    saveEdits = {};
+    for (const ck in edits) {
+      const ce = {};
+      for (const idx in edits[ck]) {
+        if (edits[ck][idx] !== 9) ce[idx] = edits[ck][idx];
+      }
+      if (Object.keys(ce).length) saveEdits[ck] = ce;
+    }
+  }
+  wr('mc_w_' + curW.id, { edits: saveEdits, player: { x: P.x, y: P.y, z: P.z, yaw: P.yaw, pitch: P.pitch } });
+  const l = getList(), w = l.find(x => x.id == curW.id);
+  if (w) { w.played = Date.now(); putList(l); }
+  dirty = false;
+}
+
+function exportStructure() {
+  if (!curW || !curW.isTest) return;
+  const tw = curW.tw || 16, td = curW.td || 16;
+  const blocks = [];
+  let minX = tw, minY = CH, minZ = td, maxX = -1, maxY = -1, maxZ = -1;
+  for (let y = 11; y < CH; y++) {
+    for (let z = 0; z < td; z++) {
+      for (let x = 0; x < tw; x++) {
+        const t = getW(x, y, z);
+        if (t && t !== 9) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (z < minZ) minZ = z;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+          if (z > maxZ) maxZ = z;
+          blocks.push([x, y - 11, z, t]);
+        }
+      }
+    }
+  }
+  if (!blocks.length) {
+    showToast('İndirilecek yapı bulunamadı!');
+    return;
+  }
+  const norm = blocks.map(([x, y, z, t]) => [x - minX, y, z - minZ, t]);
+  const w = maxX - minX + 1;
+  const d = maxZ - minZ + 1;
+  const out = JSON.stringify({ w, d, blocks: norm });
+  const blob = new Blob([out], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'yapi.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('yapi.json indirildi!');
+}
+
+setInterval(saveWorld, 8000);
+addEventListener('pagehide', saveWorld);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveWorld(); });
+
+$('b-single').onclick = () => show('worlds');
+$('b-keys1').onclick = () => { backTo = 'main'; show('keys'); };
+$('b-keys2').onclick = () => { backTo = 'pause'; show('keys'); };
+$('b-keysdone').onclick = () => show(backTo);
+$('b-back1').onclick = () => show('main');
+$('b-cancel').onclick = () => show('worlds');
+$('b-resume').onclick = lock;
+$('b-export').onclick = exportStructure;
+$('b-play').onclick = () => play(selId);
+
+$('i-name').oninput = () => {
+  if (editId) return;
+  const isT = $('i-name').value.trim() === 'test1234';
+  $('test-dim-box').style.display = isT ? 'block' : 'none';
+  $('l-seed').style.display = isT ? 'none' : 'block';
+  $('i-seed').style.display = isT ? 'none' : 'block';
+};
+
+$('b-new').onclick = () => {
+  editId = null;
+  $('ct').textContent = 'Yeni Dünya Oluştur';
+  $('i-name').value = 'Yeni Dünya ' + (getList().length + 1);
+  $('i-seed').value = '';
+  $('i-seed').disabled = false;
+  $('test-dim-box').style.display = 'none';
+  $('l-seed').style.display = 'block';
+  $('i-seed').style.display = 'block';
+  $('b-create').textContent = 'Dünya Oluştur';
+  show('create');
+};
+
+$('b-edit').onclick = () => {
+  const w = getList().find(x => x.id == selId);
+  if (!w) return;
+  editId = w.id;
+  $('ct').textContent = 'Dünyayı Düzenle';
+  $('i-name').value = w.name;
+  $('i-seed').value = w.seedText;
+  $('i-seed').disabled = true;
+  $('test-dim-box').style.display = 'none';
+  $('l-seed').style.display = w.isTest ? 'none' : 'block';
+  $('i-seed').style.display = w.isTest ? 'none' : 'block';
+  $('b-create').textContent = 'Kaydet';
+  show('create');
+};
+
+$('b-create').onclick = () => {
+  const name = $('i-name').value.trim() || 'Dünya', l = getList();
+  if (editId) {
+    const w = l.find(x => x.id == editId);
+    if (w) { w.name = name; putList(l); }
+    show('worlds');
+    return;
+  }
+  const isTest = name === 'test1234';
+  const tw = Math.max(3, Math.min(64, parseInt($('i-tw').value) || 16));
+  const td = Math.max(3, Math.min(64, parseInt($('i-td').value) || 16));
+  const st = isTest ? 'ozel' : ($('i-seed').value.trim() || String((Math.random() * 1e9) | 0)),
+        w = { id: Date.now().toString(36), name, seedText: st, seed: seedNum(st), created: Date.now(), played: Date.now(), isTest, tw, td };
+  l.push(w);
+  putList(l);
+  wr('mc_w_' + w.id, { edits: {}, player: null });
+  play(w.id);
+};
+
+$('b-del').onclick = () => {
+  if (!delArm) { delArm = true; drawWorlds(); return; }
+  delArm = false;
+  putList(getList().filter(w => w.id != selId));
+  try { localStorage.removeItem('mc_w_' + selId); } catch (e) {}
+  selId = null;
+  drawWorlds();
+};
+
+$('b-exit').onclick = () => {
+  saveWorld();
+  inGame = false;
+  locked = false;
+  manualUnlock = false;
+  ready = false;
+  curW = null;
+  try {
+    if (document.pointerLockElement === cvs && document.exitPointerLock) document.exitPointerLock();
+  } catch (e) {}
+  clearWorld();
+  show('main');
+};
+
+// Sayfa yüklendiğinde arayüzü ve oyun döngüsünü güvenli başlat
+function initGame() {
+  show('main');
+  requestAnimationFrame(loop);
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initGame);
+} else {
+  initGame();
+}
+</script>
+</body>
+</html>
