@@ -109,10 +109,22 @@ canvas{display:block;width:100%;height:100%}
 <script>
 const S = 16, CH = 56, R = 4;
 
-// Özel yapılar dizisi (Eklenen Kale)
-const CUSTOM_STRUCTURES = [
-  {"w":8,"d":8,"blocks":[[1,0,0,1],[2,0,0,1],[3,0,0,1],[4,0,0,1],[5,0,0,1],[6,0,0,1],[7,0,0,1],[0,0,1,1],[1,0,1,1],[2,0,1,2],[3,0,1,2],[4,0,1,2],[5,0,1,2],[6,0,1,4],[7,0,1,1],[0,0,2,1],[1,0,2,4],[2,0,2,3],[3,0,2,3],[4,0,2,3],[5,0,2,3],[6,0,2,2],[7,0,2,1],[0,0,3,1],[1,0,3,2],[2,0,3,3],[3,0,3,3],[4,0,3,3],[5,0,3,3],[6,0,3,2],[7,0,3,1],[0,0,4,1],[1,0,4,2],[2,0,4,3],[3,0,4,3],[4,0,4,3],[5,0,4,3],[6,0,4,2],[7,0,4,1],[0,0,5,1],[1,0,5,2],[2,0,5,3],[3,0,5,3],[4,0,5,3],[5,0,5,3],[6,0,5,4],[7,0,5,1],[0,0,6,1],[1,0,6,4],[2,0,6,2],[3,0,6,3],[4,0,6,3],[5,0,6,2],[6,0,6,1],[1,0,7,1],[2,0,7,1],[3,0,7,1],[4,0,7,1],[5,0,7,1],[2,1,1,8],[3,1,1,8],[4,1,1,8],[5,1,1,8],[6,1,1,4],[1,1,2,4],[5,1,2,6],[6,1,2,8],[1,1,3,8],[5,1,3,3],[6,1,3,8],[1,1,4,8],[6,1,4,8],[1,1,5,8],[6,1,5,4],[1,1,6,4],[2,1,6,8],[5,1,6,8],[2,2,1,8],[3,2,1,8],[4,2,1,8],[5,2,1,8],[6,2,1,4],[1,2,2,4],[5,2,2,3],[6,2,2,8],[1,2,3,8],[6,2,3,8],[1,2,4,8],[6,2,4,8],[1,2,5,8],[6,2,5,4],[1,2,6,4],[2,2,6,8],[5,2,6,8],[2,3,1,8],[3,3,1,8],[4,3,1,8],[5,3,1,8],[6,3,1,4],[1,3,2,4],[2,3,2,7],[4,3,2,3],[6,3,2,8],[1,3,3,8],[6,3,3,8],[1,3,4,8],[6,3,4,8],[1,3,5,8],[2,3,5,7],[6,3,5,4],[1,3,6,4],[2,3,6,8],[3,3,6,8],[4,3,6,8],[5,3,6,8],[2,4,1,8],[3,4,1,8],[4,4,1,8],[5,4,1,8],[6,4,1,4],[1,4,2,4],[2,4,2,8],[3,4,2,8],[6,4,2,8],[1,4,3,8],[2,4,3,8],[3,4,3,8],[4,4,3,8],[6,4,3,8],[1,4,4,8],[2,4,4,8],[3,4,4,8],[4,4,4,8],[5,4,4,8],[6,4,4,8],[1,4,5,8],[2,4,5,8],[3,4,5,8],[4,4,5,8],[5,4,5,8],[6,4,5,4],[1,4,6,4],[2,4,6,8],[3,4,6,8],[4,4,6,8],[5,4,6,8],[1,5,1,8],[2,5,1,8],[3,5,1,8],[4,5,1,8],[5,5,1,8],[6,5,1,8],[1,5,2,8],[6,5,2,8],[1,5,3,8],[6,5,3,8],[1,5,4,8],[6,5,4,8],[1,5,5,8],[6,5,5,8],[1,5,6,8],[2,5,6,8],[3,5,6,8],[4,5,6,8],[5,5,6,8],[6,5,6,8],[1,6,1,8],[2,6,1,8],[4,6,1,8],[6,6,1,8],[1,6,2,8],[6,6,3,8],[1,6,4,8],[6,6,5,8],[1,6,6,8],[3,6,6,8],[5,6,6,8],[6,6,6,8]]}
-];
+// Yapılar yapi.json listesinden, yapi/ klasöründen yüklenir
+let CUSTOM_STRUCTURES = [];
+async function loadStructures() {
+  try {
+    const list = await (await fetch('yapi.json')).json();
+    const out = [];
+    for (const name of list) {
+      const file = name.endsWith('.json') ? name : name + '.json';
+      try {
+        const st = await (await fetch('yapi/' + file)).json();
+        if (st && st.w && st.d && Array.isArray(st.blocks)) out.push(st);
+      } catch (e) { console.warn('Yapı yüklenemedi:', file); }
+    }
+    CUSTOM_STRUCTURES = out;
+  } catch (e) { console.warn('yapi.json okunamadı', e); }
+}
 
 // ---------- dokular ----------
 const px = (c, i, j, r, g, b, a = 1) => {
@@ -338,7 +350,7 @@ function gen(cx, cz) {
       for (let y = 0; y <= h; y++) L(x, y, z, y == h ? 1 : (y < h - 3 ? 8 : 2));
     }
 
-  if ((cx || cz) && CUSTOM_STRUCTURES.length > 0 && hash(cx, cz, 19) < .08) {
+  if ((cx || cz) && CUSTOM_STRUCTURES.length > 0 && hash(cx, cz, 19) < .15) {
     const st = CUSTOM_STRUCTURES[(hash(cx, cz, 23) * CUSTOM_STRUCTURES.length) | 0];
     const rot = (hash(cx, cz, 29) * 4) | 0; // 0: 0°, 1: 90°, 2: 180°, 3: 270°
     const rw = (rot % 2 === 1) ? st.d : st.w;
@@ -359,26 +371,6 @@ function gen(cx, cz) {
         L(ox + rx, b + 1 + by, oz + rz, bt);
       }
     }
-  } else if ((cx || cz) && hash(cx, cz, 7) < .1) {
-    let b = 0;
-    for (let z = 4; z <= 10; z++)
-      for (let x = 4; x <= 10; x++) b = Math.max(b, hs[x + S * z]);
-    for (let z = 4; z <= 10; z++)
-      for (let x = 4; x <= 10; x++) {
-        for (let y = hs[x + S * z]; y <= b; y++) L(x, y, z, y == b ? 1 : 2);
-        const e = x == 4 || x == 10 || z == 4 || z == 10,
-              cor = (x == 4 || x == 10) && (z == 4 || z == 10);
-        for (let y = b + 1; y <= b + 4; y++) {
-          let t = 0;
-          if (y == b + 4) t = 3;
-          else if (e) {
-            t = cor ? 4 : 3;
-            if (y == b + 2 && (x == 7 || z == 7)) t = 5;
-            if (z == 4 && x == 7 && y <= b + 2) t = 0;
-          }
-          L(x, y, z, t);
-        }
-      }
   } else {
     // Doğal ağaçlar (Odun gövde + Ağaç Yaprağı + Elmalı Ağaç Yaprağı)
     for (let z = 2; z < 14; z++) {
@@ -1041,10 +1033,10 @@ function exportStructure() {
   const blob = new Blob([out], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'yapi.json';
+  a.download = 'yeni_yapi.json';
   a.click();
   URL.revokeObjectURL(a.href);
-  showToast('yapi.json indirildi!');
+  showToast('yeni_yapi.json indirildi! Adını değiştirip yapi/ klasörüne koy.');
 }
 
 setInterval(saveWorld, 8000);
@@ -1063,10 +1055,12 @@ $('b-play').onclick = () => play(selId);
 
 $('i-name').oninput = () => {
   if (editId) return;
-  const isT = $('i-name').value.trim() === 'test1234';
+  const v = $('i-name').value.trim().toLowerCase();
+  const isT = v === 'test1234', isTex = v === 'texture';
   $('test-dim-box').style.display = isT ? 'block' : 'none';
-  $('l-seed').style.display = isT ? 'none' : 'block';
-  $('i-seed').style.display = isT ? 'none' : 'block';
+  $('l-seed').style.display = (isT || isTex) ? 'none' : 'block';
+  $('i-seed').style.display = (isT || isTex) ? 'none' : 'block';
+  $('b-create').textContent = isTex ? 'Dokuları İndir' : 'Dünya Oluştur';
 };
 
 $('b-new').onclick = () => {
@@ -1099,6 +1093,7 @@ $('b-edit').onclick = () => {
 
 $('b-create').onclick = () => {
   const name = $('i-name').value.trim() || 'Dünya', l = getList();
+  if (!editId && name.toLowerCase() === 'texture') { exportTextures(); return; }
   if (editId) {
     const w = l.find(x => x.id == editId);
     if (w) { w.name = name; putList(l); }
@@ -1139,9 +1134,102 @@ $('b-exit').onclick = () => {
   show('main');
 };
 
+// ---------- doku paketini PNG olarak indir (oyundaki gerçek dokular) ----------
+const crcT = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = u8 => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = crcT[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], central = [];
+  let off = 0;
+  for (const f of files) {
+    const nm = enc.encode(f.name), crc = crc32(f.data), sz = f.data.length;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+    lh.setUint16(12, 0x21, true); lh.setUint32(14, crc, true); lh.setUint32(18, sz, true);
+    lh.setUint32(22, sz, true); lh.setUint16(26, nm.length, true);
+    parts.push(new Uint8Array(lh.buffer), nm, f.data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+    ch.setUint16(8, 0x0800, true); ch.setUint16(14, 0x21, true); ch.setUint32(16, crc, true);
+    ch.setUint32(20, sz, true); ch.setUint32(24, sz, true); ch.setUint16(28, nm.length, true);
+    ch.setUint32(42, off, true);
+    central.push(new Uint8Array(ch.buffer), nm);
+    off += 30 + nm.length + sz;
+  }
+  const cd = central.reduce((a, p) => a + p.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true);
+  end.setUint16(10, files.length, true); end.setUint32(12, cd, true); end.setUint32(16, off, true);
+  return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' });
+}
+function exportTextures() {
+  const png = c => Uint8Array.from(atob(c.toDataURL('image/png').split(',')[1]), ch => ch.charCodeAt(0));
+  const big = c => {
+    const b = document.createElement('canvas');
+    b.width = b.height = 256;
+    const x = b.getContext('2d');
+    x.imageSmoothingEnabled = false;
+    x.drawImage(c, 0, 0, 256, 256);
+    return b;
+  };
+  const list = names.map(n => [n, cv[n]]).concat(cracks.map((c, i) => ['crack_' + i, c]));
+  const files = [];
+  list.forEach(([n, c], i) => {
+    const f = String(i + 1).padStart(2, '0') + '_' + n + '.png';
+    files.push({ name: f, data: png(c) });
+    files.push({ name: 'buyuk/' + f, data: png(big(c)) });
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(makeZip(files));
+  a.download = 'mini_craft_dokular.zip';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  showToast('mini_craft_dokular.zip indirildi!');
+}
+
+// ---------- doku paketi: PNG dosyalarını yükle (yoksa kodla çizilenler kalır) ----------
+// PNG'ler index.html'in yanındaki bu klasörlerden birinde aranır (ilk bulunan kullanılır):
+const DOKU_KLASORLERI = ['dokular', 'texturler', 'textures', 'texture', 'doku'];
+// Dosya adları, "texture" ile indirilen zip'tekiyle aynı: 01_grassTop.png, 03_dirt.png ... 12_crack_0.png
+const DOKU_ADLARI = names.concat(cracks.map((_, i) => 'crack_' + i));
+const loadImg = url => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url; });
+function refreshIcons() {
+  try {
+    [...bar.children].forEach((e, i) => e.style.backgroundImage = `url(${cv[icon[i]].toDataURL()})`);
+    ov.style.background = `linear-gradient(#0008,#0008),url(${cv.dirt.toDataURL()}) 0 0/96px`;
+  } catch (e) { console.warn('Simgeler yenilenemedi (dosyayı sunucudan aç):', e); }
+}
+async function loadTexturePack() {
+  let klasorler = DOKU_KLASORLERI.slice(), bulunan = 0;
+  for (let i = 0; i < DOKU_ADLARI.length; i++) {
+    const key = DOKU_ADLARI[i], no = String(i + 1).padStart(2, '0');
+    let img = null;
+    for (const f of klasorler) {
+      img = (await loadImg(`${f}/${no}_${key}.png`)) || (await loadImg(`${f}/${key}.png`));
+      if (img) { klasorler = [f]; break; }
+    }
+    if (!img) continue;
+    const c = i < names.length ? cv[key] : cracks[i - names.length];
+    const x = c.getContext('2d');
+    x.imageSmoothingEnabled = false;
+    x.clearRect(0, 0, 16, 16);
+    x.drawImage(img, 0, 0, 16, 16);
+    bulunan++;
+  }
+  if (bulunan) {
+    mats.forEach(m => { m.map.needsUpdate = true; });
+    crackMats.forEach(m => { m.map.needsUpdate = true; });
+    refreshIcons();
+    console.log(`Doku paketi yüklendi: ${bulunan}/${DOKU_ADLARI.length} dosya (${klasorler[0]}/)`);
+  } else {
+    console.warn('Doku PNG dosyası bulunamadı, kodla çizilen dokular kullanılıyor.');
+  }
+}
+
 // Sayfa yüklendiğinde arayüzü ve oyun döngüsünü güvenli başlat
 function initGame() {
   show('main');
+  loadStructures();
+  loadTexturePack();
   requestAnimationFrame(loop);
 }
 if (document.readyState === 'loading') {
